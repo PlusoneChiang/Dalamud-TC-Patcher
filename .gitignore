@@ -5,3 +5,5 @@
 **/[Bb]in/
 **/[Oo]bj/
 .DS_Store
+AGENTS.md
+.codegraph
