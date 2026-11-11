@@ -1,0 +1,7 @@
+# 本機開發參考文件，不納入版本控制。
+/docs/
+/artifacts/
+
+**/[Bb]in/
+**/[Oo]bj/
+.DS_Store

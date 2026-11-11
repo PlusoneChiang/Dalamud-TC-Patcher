@@ -1,0 +1,27 @@
+{
+    "id": "13.0.0.16-tc-source-poc.1",
+    "upstreamVersion": "13.0.0.16",
+    "upstreamSourceCommit": "e100ec2abdc490838f3422bf5fd5cda695a886fd",
+    "gameVersion": "2026.07.22.0000.0000",
+    "upstream": {
+        "url": "https://raw.githubusercontent.com/goatcorp/dalamud-distrib/d04ff1bfaaa39661ccadfe44f7e2982c8fc76f04/latest.zip",
+        "sha256": "09d2c8913cb27df732459b5bed67c1e7630d0edb78b8cef43c8ae4b8e648d9d0"
+    },
+    "patches": [
+        {
+            "path": "Dalamud.dll",
+            "inputSha256": "27b049f774b014ccd838366295a8c1aaf9991051040d417fb1e42e91c8c1711d",
+            "ruleSet": "core"
+        },
+        {
+            "path": "Dalamud.Common.dll",
+            "inputSha256": "74153f11891dc4748f686402d462db377cf6b8be2c13f04fac30a1f6ecc1319a",
+            "ruleSet": "common"
+        },
+        {
+            "path": "Dalamud.Injector.dll",
+            "inputSha256": "be652ca1b7be18782012840e9d5a81c259b73f90ed09248c9aa010b9a0f134b3",
+            "ruleSet": "injector"
+        }
+    ]
+}

@@ -1,0 +1,7 @@
+<Project>
+    <PropertyGroup>
+        <!-- 隔離上游的共用建置與套件設定，避免版本合併影響 Patcher。 -->
+        <ImportDirectoryBuildTargets>false</ImportDirectoryBuildTargets>
+        <ImportDirectoryPackagesProps>false</ImportDirectoryPackagesProps>
+    </PropertyGroup>
+</Project>

@@ -1,0 +1,12 @@
+[submodule "external/FFXIVClientStructs"]
+	path = external/FFXIVClientStructs
+	url = https://github.com/PlusoneChiang/FFXIVClientStructs.git
+[submodule "external/Lumina"]
+	path = external/Lumina
+	url = https://github.com/PlusoneChiang/Lumina.git
+[submodule "external/Lumina.Excel"]
+	path = external/Lumina.Excel
+	url = https://github.com/NotAdam/Lumina.Excel.git
+[submodule "upstream"]
+	path = upstream
+	url = https://github.com/goatcorp/Dalamud.git

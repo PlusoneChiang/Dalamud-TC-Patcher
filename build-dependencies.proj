@@ -1,0 +1,31 @@
+<Project>
+  <PropertyGroup>
+    <Configuration Condition="'$(Configuration)' == ''">Release</Configuration>
+    <DependencyOutput>$(MSBuildThisFileDirectory)artifacts/dependencies</DependencyOutput>
+    <DependencyOverrides>$(MSBuildThisFileDirectory)build/DependencyOverrides.targets</DependencyOverrides>
+  </PropertyGroup>
+
+  <Target Name="Build">
+    <Error Condition="!Exists('$(DependencyOverrides)')" Text="找不到相依性建置覆寫檔：$(DependencyOverrides)" />
+    <Error Condition="!Exists('$(MSBuildThisFileDirectory)external/FFXIVClientStructs/FFXIVClientStructs/FFXIVClientStructs.csproj')" Text="找不到 FFXIVClientStructs submodule；請先執行 git submodule update --init --recursive。" />
+    <Error Condition="!Exists('$(MSBuildThisFileDirectory)external/Lumina/src/Lumina/Lumina.csproj')" Text="找不到 Lumina submodule；請先執行 git submodule update --init --recursive。" />
+    <Error Condition="!Exists('$(MSBuildThisFileDirectory)external/Lumina.Excel/src/Lumina.Excel/Lumina.Excel.csproj')" Text="找不到 Lumina.Excel submodule；請先執行 git submodule update --init --recursive。" />
+
+    <MakeDir Directories="$(DependencyOutput)" />
+
+    <Exec
+      Command="dotnet build &quot;external/FFXIVClientStructs/FFXIVClientStructs/FFXIVClientStructs.csproj&quot; --configuration $(Configuration) -m:1 -nr:false --disable-build-servers -p:UseSharedCompilation=false -p:GeneratePackageOnBuild=false -p:CustomAfterMicrosoftCommonTargets=&quot;$(DependencyOverrides)&quot;"
+      WorkingDirectory="$(MSBuildThisFileDirectory)" />
+    <Exec
+      Command="dotnet build &quot;external/Lumina/src/Lumina/Lumina.csproj&quot; --configuration $(Configuration) -m:1 -nr:false --disable-build-servers -p:UseSharedCompilation=false -p:GeneratePackageOnBuild=false -p:CustomAfterMicrosoftCommonTargets=&quot;$(DependencyOverrides)&quot;"
+      WorkingDirectory="$(MSBuildThisFileDirectory)" />
+    <Exec
+      Command="dotnet build &quot;external/Lumina.Excel/src/Lumina.Excel/Lumina.Excel.csproj&quot; --configuration $(Configuration) -m:1 -nr:false --disable-build-servers -p:UseSharedCompilation=false -p:GeneratePackageOnBuild=false -p:CustomAfterMicrosoftCommonTargets=&quot;$(DependencyOverrides)&quot;"
+      WorkingDirectory="$(MSBuildThisFileDirectory)" />
+
+    <Copy
+      SourceFiles="$(MSBuildThisFileDirectory)external/FFXIVClientStructs/bin/$(Configuration)/FFXIVClientStructs.dll;$(MSBuildThisFileDirectory)external/Lumina/src/Lumina/bin/$(Configuration)/net8.0/Lumina.dll;$(MSBuildThisFileDirectory)external/Lumina.Excel/src/Lumina.Excel/bin/$(Configuration)/net8.0/Lumina.Excel.dll"
+      DestinationFolder="$(DependencyOutput)"
+      SkipUnchangedFiles="true" />
+  </Target>
+</Project>
