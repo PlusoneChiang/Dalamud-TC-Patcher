@@ -1,0 +1,103 @@
+name: Release TC Dalamud
+
+on:
+  push:
+    tags:
+      - 'v*-tc.*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Validate, build and package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      release_artifact_id: ${{ steps.upload.outputs.artifact-id }}
+    env:
+      RELEASE_TAG: ${{ github.ref_name }}
+      DOTNET_NOLOGO: 'true'
+      DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Validate release version
+        run: |
+          python3 -B -m unittest discover -s tests -p 'test_release.py' -v
+          python3 -B scripts/release.py validate "$RELEASE_TAG"
+
+      - name: Initialize pinned dependencies
+        run: git submodule update --init --recursive -- external/FFXIVClientStructs external/Lumina external/Lumina.Excel
+
+      - name: Set up .NET SDK from global.json
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Run regression tests
+        run: dotnet test tests/dalamud.tc.patcher.tests.csproj --configuration Release
+
+      - name: Build and patch Dalamud
+        run: ./scripts/patch-dalamud.sh
+
+      - name: Package release assets
+        run: python3 -B scripts/release.py package "$RELEASE_TAG" "$(git rev-parse HEAD)"
+
+      - name: Upload release assets
+        id: upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ github.ref_name }}-${{ github.run_attempt }}
+          path: artifacts/release/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ github.ref_name }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ needs.build.outputs.release_artifact_id }}
+          path: release
+
+      - name: Verify archive checksum
+        working-directory: release
+        run: sha256sum --check --strict *.sha256
+
+      - name: Upload assets and publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # shortcut: Publish one tag at a time in increasing version order; compare versions before supporting concurrent releases or backports.
+          prerelease=false
+          latest=true
+          if [[ "$RELEASE_TAG" == *-rc.* ]]; then
+            prerelease=true
+            latest=false
+          fi
+          gh release create "$RELEASE_TAG" release/*.zip release/*.sha256 release/build-report.json \
+            --verify-tag --draft --prerelease="$prerelease" --latest=false \
+            --title "TC Dalamud ${RELEASE_TAG#v}" --notes-file release/release-notes.md
+          gh release edit "$RELEASE_TAG" --draft=false --latest="$latest"
