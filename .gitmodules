@@ -8,5 +8,5 @@
 	path = external/Lumina.Excel
 	url = https://github.com/NotAdam/Lumina.Excel.git
 [submodule "upstream"]
-	path = upstream
+	path = dalamud
 	url = https://github.com/goatcorp/Dalamud.git
