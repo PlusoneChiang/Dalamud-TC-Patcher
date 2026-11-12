@@ -20,6 +20,7 @@ internal static class PatchSet
         ["Dalamud.Tc.Rules.DalamudPluginInterfaceRules"] = "Dalamud.Plugin.DalamudPluginInterface",
         ["Dalamud.Tc.Rules.PluginInstallerWindowRules"] = "Dalamud.Interface.Internal.Windows.PluginInstaller.PluginInstallerWindow",
         ["Dalamud.Tc.Rules.ScannerRules"] = "Dalamud.Game.SigScanner",
+        ["Dalamud.Tc.Rules.VersionRules"] = "Dalamud.Utility.Util",
         ["Dalamud.Tc.Rules.InjectorRules"] = "Dalamud.Injector.EntryPoint",
     };
 
@@ -33,7 +34,7 @@ internal static class PatchSet
 
     public static IReadOnlyList<string> SourceFiles(string ruleSet) => ruleSet switch
     {
-        "core" => ["LanguagePatches.cs", "RepositoryPatches.cs", "ScannerPatches.cs"],
+        "core" => ["LanguagePatches.cs", "RepositoryPatches.cs", "ScannerPatches.cs", "VersionPatches.cs"],
         "common" => [],
         "injector" => ["InjectorPatches.cs"],
         _ => throw new InvalidDataException($"未知的來源補丁集合：{ruleSet}"),
@@ -64,6 +65,7 @@ internal static class PatchSet
                 LanguagePatches.Apply(editor);
                 RepositoryPatches.Apply(editor);
                 ScannerPatches.Apply(editor);
+                VersionPatches.Apply(editor);
                 break;
             case "injector":
                 InjectorPatches.Apply(editor);
