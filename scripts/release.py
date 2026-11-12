@@ -27,7 +27,7 @@ def package(root, tag, commit):
     if not re.fullmatch(r"[0-9a-f]{40}", commit):
         raise ValueError("A full Patcher commit SHA is required.")
     source = root / "artifacts/patched-dalamud"
-    report_path = source / "build-report.json"
+    report_path = source / "versionInfo.json"
     report = json.loads(report_path.read_text(encoding="utf-8"))
     for field in ("id", "upstreamVersion", "upstreamSourceCommit", "gameVersion"):
         if report[field] != manifest[field]:
@@ -58,7 +58,7 @@ def package(root, tag, commit):
     (output / f"{archive_path.name}.sha256").write_text(
         f"{digest.hexdigest()}  {archive_path.name}\n", encoding="utf-8"
     )
-    (output / "build-report.json").write_text(report_text, encoding="utf-8")
+    (output / "versionInfo.json").write_text(report_text, encoding="utf-8")
     notes = (
         f"TC 套件版本：`{manifest['id']}`\n\n"
         f"- 官方 Dalamud：`{manifest['upstreamVersion']}`\n"

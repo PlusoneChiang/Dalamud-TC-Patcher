@@ -1,6 +1,9 @@
 using Dalamud.Tc.Patcher.Patching;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Dalamud.Tc.Patcher.Packaging;
 
@@ -55,21 +58,51 @@ internal static class PackageBuilder
                 Console.WriteLine("正在編譯並套用明確來源補丁…");
                 sources = AssemblyPatcher.Apply(staging, manifest.Patches);
             }
+            var minimumRuntime = new Version(9, 0, 3);
+            var runtimeRequirements = new SortedDictionary<string, JsonElement>(StringComparer.Ordinal);
+            foreach (var path in Directory.GetFiles(staging, "*.runtimeconfig.json", SearchOption.AllDirectories))
+            {
+                var config = JsonNode.Parse(await File.ReadAllTextAsync(path, cancellationToken));
+                if (config?["runtimeOptions"] is not JsonObject options)
+                    throw new InvalidDataException($"Runtime 設定缺少 runtimeOptions 物件：{Relative(staging, path)}");
+                IEnumerable<JsonObject> frameworks = options["frameworks"] is JsonArray multiple
+                    ? multiple.OfType<JsonObject>()
+                    : options["framework"] is JsonObject single ? [single] : [];
+                foreach (var framework in frameworks)
+                {
+                    if (framework["name"]?.GetValue<string>() is not ("Microsoft.NETCore.App" or "Microsoft.WindowsDesktop.App")) continue;
+                    if (!Version.TryParse(framework["version"]?.GetValue<string>(), out var version))
+                        throw new InvalidDataException($"Runtime 版本無效：{Relative(staging, path)}");
+                    if (version < minimumRuntime) framework["version"] = minimumRuntime.ToString();
+                }
+                await File.WriteAllTextAsync(path, config.ToJsonString(PackageManifest.JsonOptions), cancellationToken);
+                runtimeRequirements.Add(Relative(staging, path), JsonSerializer.SerializeToElement(options));
+            }
             File.Delete(Path.Combine(staging, "hashes.json"));
             var md5 = new SortedDictionary<string, string>(StringComparer.Ordinal);
             foreach (var path in Directory.GetFiles(staging, "*", SearchOption.AllDirectories))
             {
                 var name = Path.GetFileName(path);
-                if (name is "build-report.json" or "dalamud.txt" || name.EndsWith(".pdb", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".ipdb", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) continue;
+                if (name is "versionInfo.json" or "dalamud.txt" || name.EndsWith(".pdb", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".ipdb", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) continue;
                 md5.Add(Relative(staging, path), Convert.ToHexString(MD5.HashData(await File.ReadAllBytesAsync(path, cancellationToken))));
             }
             await File.WriteAllTextAsync(Path.Combine(staging, "hashes.json"), JsonSerializer.Serialize(md5, PackageManifest.JsonOptions), cancellationToken);
             var files = new SortedDictionary<string, string>(StringComparer.Ordinal);
             foreach (var path in Directory.GetFiles(staging, "*", SearchOption.AllDirectories))
                 files.Add(Relative(staging, path), Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(path, cancellationToken))).ToLowerInvariant());
-            var patcherSha256 = Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(typeof(PackageBuilder).Assembly.Location, cancellationToken))).ToLowerInvariant();
-            var report = new { patcherSha256, manifest.Id, manifest.UpstreamVersion, manifest.UpstreamSourceCommit, manifest.GameVersion, inputSha256 = manifest.Upstream.Sha256, patches = manifest.Patches, ruleSourceSha256 = sources, dependencySha256 = dependencyHashes, outputFiles = files };
-            await File.WriteAllTextAsync(Path.Combine(staging, "build-report.json"), JsonSerializer.Serialize(report, PackageManifest.JsonOptions), cancellationToken);
+            var patcher = typeof(PackageBuilder).Assembly;
+            var patcherSha256 = Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(patcher.Location, cancellationToken))).ToLowerInvariant();
+            var patcherBuild = new { sdkVersion = patcher.GetCustomAttributes<AssemblyMetadataAttribute>().Single(a => a.Key == "BuildSdkVersion").Value };
+            var patcherRuntime = new
+            {
+                frameworkDescription = RuntimeInformation.FrameworkDescription,
+                version = Environment.Version.ToString(),
+                osDescription = RuntimeInformation.OSDescription,
+                osArchitecture = RuntimeInformation.OSArchitecture.ToString(),
+                processArchitecture = RuntimeInformation.ProcessArchitecture.ToString(),
+            };
+            var report = new { patcherSha256, patcherBuild, patcherRuntime, runtimeRequirements, manifest.Id, manifest.UpstreamVersion, manifest.UpstreamSourceCommit, manifest.GameVersion, inputSha256 = manifest.Upstream.Sha256, patches = manifest.Patches, ruleSourceSha256 = sources, dependencySha256 = dependencyHashes, outputFiles = files };
+            await File.WriteAllTextAsync(Path.Combine(staging, "versionInfo.json"), JsonSerializer.Serialize(report, PackageManifest.JsonOptions), cancellationToken);
             Directory.Move(staging, output);
         }
         catch

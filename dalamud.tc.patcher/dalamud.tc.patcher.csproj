@@ -11,5 +11,6 @@
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
         <EmbeddedResource Include="Patches/*Patches.cs" LogicalName="rules.%(Filename)%(Extension)" />
         <InternalsVisibleTo Include="dalamud.tc.patcher.tests" />
+        <AssemblyMetadata Include="BuildSdkVersion" Value="$(NETCoreSdkVersion)" />
     </ItemGroup>
 </Project>

@@ -55,26 +55,35 @@ class ReleaseTests(unittest.TestCase):
             (source / "data/file.txt").write_text("測試", encoding="utf-8")
             report = {key: self.manifest[key] for key in ("id", "upstreamVersion", "upstreamSourceCommit", "gameVersion")}
             report["inputSha256"] = self.manifest["upstream"]["sha256"]
+            report["patcherBuild"] = {"sdkVersion": "9.0.311"}
+            report["patcherRuntime"] = {"version": "9.0.13", "osDescription": "Linux", "processArchitecture": "X64"}
+            report["runtimeRequirements"] = {"Dalamud.runtimeconfig.json": {"frameworks": [
+                {"name": "Microsoft.NETCore.App", "version": "9.0.3"},
+                {"name": "Microsoft.WindowsDesktop.App", "version": "9.0.3"},
+            ], "rollForward": "LatestMinor"}}
             original_report = json.dumps(report)
-            (source / "build-report.json").write_text(original_report, encoding="utf-8")
+            (source / "versionInfo.json").write_text(original_report, encoding="utf-8")
             archive = release.package(root, self.tag, "c" * 40)
             checksum = archive.with_name(archive.name + ".sha256").read_text(encoding="utf-8")
             self.assertEqual(f"{hashlib.sha256(archive.read_bytes()).hexdigest()}  {archive.name}\n", checksum)
-            report = json.loads((archive.parent / "build-report.json").read_text(encoding="utf-8"))
+            report = json.loads((archive.parent / "versionInfo.json").read_text(encoding="utf-8"))
             self.assertEqual(self.tag, report["releaseTag"])
             self.assertEqual("c" * 40, report["patcherSourceCommit"])
+            original = json.loads(original_report)
+            for field in ("patcherBuild", "patcherRuntime", "runtimeRequirements"):
+                self.assertEqual(original[field], report[field])
             with zipfile.ZipFile(archive) as package:
-                self.assertEqual({"Dalamud.dll", "data/file.txt", "build-report.json"}, set(package.namelist()))
-                self.assertEqual(report, json.loads(package.read("build-report.json")))
+                self.assertEqual({"Dalamud.dll", "data/file.txt", "versionInfo.json"}, set(package.namelist()))
+                self.assertEqual(report, json.loads(package.read("versionInfo.json")))
                 self.assertEqual(b"fixture", package.read("Dalamud.dll"))
-            self.assertEqual(original_report, (source / "build-report.json").read_text(encoding="utf-8"))
+            self.assertEqual(original_report, (source / "versionInfo.json").read_text(encoding="utf-8"))
             self.assertIn("候選版本", (archive.parent / "release-notes.md").read_text(encoding="utf-8"))
             with self.assertRaises(FileExistsError):
                 release.package(root, self.tag, "c" * 40)
             for field in ("id", "upstreamVersion", "upstreamSourceCommit", "gameVersion", "inputSha256"):
                 with self.subTest(field=field):
                     bad_report = dict(report, **{field: "mismatch"})
-                    (source / "build-report.json").write_text(json.dumps(bad_report), encoding="utf-8")
+                    (source / "versionInfo.json").write_text(json.dumps(bad_report), encoding="utf-8")
                     with self.assertRaisesRegex(ValueError, "does not match"):
                         release.package(root, self.tag, "c" * 40)
             with self.assertRaisesRegex(ValueError, "commit SHA"):

@@ -62,4 +62,4 @@ dotnet run --project dalamud.tc.patcher --configuration Release --no-build --no-
     --cache artifacts/cache \
     --output "$output"
 
-printf '\n已完成。\n輸出目錄：%s\n產物報告：%s/build-report.json\n' "$output" "$output"
+printf '\n已完成。\n輸出目錄：%s\n產物報告：%s/versionInfo.json\n' "$output" "$output"

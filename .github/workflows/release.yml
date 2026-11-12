@@ -97,7 +97,7 @@ jobs:
             prerelease=true
             latest=false
           fi
-          gh release create "$RELEASE_TAG" release/*.zip release/*.sha256 release/build-report.json \
+          gh release create "$RELEASE_TAG" release/*.zip release/*.sha256 release/versionInfo.json \
             --verify-tag --draft --prerelease="$prerelease" --latest=false \
             --title "TC Dalamud ${RELEASE_TAG#v}" --notes-file release/release-notes.md
           gh release edit "$RELEASE_TAG" --draft=false --latest="$latest"
