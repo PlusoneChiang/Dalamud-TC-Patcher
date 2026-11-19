@@ -195,9 +195,12 @@ internal static class LanguagePatches
             ?? throw new InvalidDataException("找不到字型的 tw 語言分支。");
         RuleEditor.Require(start.OpCode == OpCodes.Call && start.Next?.OpCode == OpCodes.Callvirt && start.Next.Next?.OpCode == OpCodes.Ldstr && (string?)start.Next.Next.Operand == "tw" && start.Next.Next.Next?.OpCode == OpCodes.Call && start.Next.Next.Next.Next?.OpCode.FlowControl == FlowControl.Cond_Branch,
             "字型 tw 語言分支結構已變更。");
+        // 先保存既有跳轉，避免把新增 tc 判斷的回退分支也改向自身。
+        var incomingBranches = method.Body.Instructions.Where(x => x.Operand == start).ToArray();
         var il = method.Body.GetILProcessor();
+        var tcStart = il.Create(OpCodes.Call, (MethodReference)start.Operand);
         var branch = il.Create(OpCodes.Brfalse, start);
-        il.InsertBefore(start, il.Create(OpCodes.Call, (MethodReference)start.Operand));
+        il.InsertBefore(start, tcStart);
         il.InsertBefore(start, il.Create(OpCodes.Callvirt, (MethodReference)start.Next!.Operand));
         il.InsertBefore(start, il.Create(OpCodes.Ldstr, "tc"));
         il.InsertBefore(start, il.Create(OpCodes.Call, (MethodReference)start.Next.Next!.Next!.Operand));
@@ -207,6 +210,8 @@ internal static class LanguagePatches
         il.InsertBefore(start, il.Create(OpCodes.Ldarg_1));
         il.InsertBefore(start, il.Create(OpCodes.Call, editor.Helper("Dalamud.Tc.Rules.FontRules", "AddTraditionalChineseFonts", 3)));
         il.InsertBefore(start, il.Create(OpCodes.Ret));
+        foreach (var incoming in incomingBranches)
+            incoming.Operand = tcStart;
     }
 
     private static void RewriteDataManagerWrappers(RuleEditor editor)
